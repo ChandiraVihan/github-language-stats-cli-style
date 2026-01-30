@@ -1,4 +1,3 @@
-// src/app/api/stats/[username]/route.ts
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ username: string }> }
