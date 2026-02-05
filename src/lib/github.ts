@@ -1,5 +1,5 @@
 import { graphql } from '@octokit/graphql';                  //Github api utility 
-                                                              //will be replaced after new detailed one
+                                                              
 
 const graphqlWithAuth = graphql.defaults({
   headers: {
