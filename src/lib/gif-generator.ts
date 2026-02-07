@@ -265,7 +265,7 @@ function drawAvatar(ctx: CanvasRenderingContext2D, avatar: Image, frame: number)
 
 function drawTerminalOverlay(ctx: CanvasRenderingContext2D, profile: Profile, frame: number) {
   // Terminal window at bottom
-  const termX = 20;
+  const termX = 40;
   const termY = HEIGHT - 120;
   const termW = WIDTH - 40;
   const termH = 100;
@@ -294,7 +294,7 @@ function drawTerminalOverlay(ctx: CanvasRenderingContext2D, profile: Profile, fr
   ];
   
   ctx.font = '13px JetBrains Mono, monospace';
-  ctx.fillStyle = '#33ff00';
+  ctx.fillStyle = '#0051ff';
   
   lines.forEach((line, i) => {
     const y = termY + 45 + i * 20;
