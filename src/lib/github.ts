@@ -85,3 +85,4 @@ export async function fetchUserLanguages(username: string): Promise<Language[]> 
     .sort((a, b) => b.size - a.size)
     .slice(0, 6); // Top 6 for cleaner orbit
 }
+

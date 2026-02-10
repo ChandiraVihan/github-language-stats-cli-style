@@ -2,6 +2,9 @@
 import { fetchUserLanguages, fetchGitHubProfile } from '@/lib/github';
 import { generateSolarSystemGIF } from '@/lib/gif-generator';
 
+export const runtime = 'nodejs';
+export const maxDuration = 30; // Allow 30 seconds for generation
+
 export async function GET(
   request: Request,
   context: { params: Promise<{ username: string }> }
@@ -21,12 +24,7 @@ export async function GET(
 
     const gifBuffer = await generateSolarSystemGIF(profile, languages);
 
-    // Return ArrayBuffer properly
-    const arrayBuffer = new ArrayBuffer(gifBuffer.length);
-    const uint8Array = new Uint8Array(arrayBuffer);
-    uint8Array.set(gifBuffer);
-
-    return new Response(arrayBuffer, {
+    return new Response(gifBuffer, {
       headers: {
         'Content-Type': 'image/gif',
         'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400',
