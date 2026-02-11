@@ -11,7 +11,7 @@ const CENTER_Y = HEIGHT / 2 - 30;
 const ORBIT_RADIUS_X = 380;
 const ORBIT_RADIUS_Y = 140;
 const FPS = 60;
-const TOTAL_FRAMES = 540; // 9 seconds at 60fps
+const TOTAL_FRAMES = 540;
 
 interface Planet {
   language: Language;
@@ -29,7 +29,6 @@ interface Scene {
   draw: (ctx: CanvasRenderingContext2D, frame: number, sceneFrame: number) => void;
 }
 
-// Language logos from GitHub's linguist repo
 const LOGO_URLS: Record<string, string> = {
   'JavaScript': 'https://raw.githubusercontent.com/github/explore/main/topics/javascript/javascript.png',
   'TypeScript': 'https://raw.githubusercontent.com/github/explore/main/topics/typescript/typescript.png',
@@ -56,10 +55,8 @@ export async function generateSolarSystemGIF(
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext('2d');
   
-  // Load avatar
   const avatar = await loadImage(profile.avatarUrl);
   
-  // Load language logos
   const planets: Planet[] = await Promise.all(
     languages.slice(0, 6).map(async (lang, i) => {
       const logoUrl = LOGO_URLS[lang.name] || '';
@@ -89,42 +86,36 @@ export async function generateSolarSystemGIF(
 
   const totalBytes = languages.reduce((a, b) => a + b.size, 0);
   
-  // Setup GIF encoder for 60fps
   const encoder = new GIFEncoder(WIDTH, HEIGHT);
   encoder.setRepeat(0);
-  encoder.setDelay(1000 / FPS); // 16.67ms for 60fps
-  encoder.setQuality(1); // Best quality
+  encoder.setDelay(1000 / FPS);
+  encoder.setQuality(1);
   encoder.start();
   
-  // Define scenes
   const scenes: Scene[] = [
     {
       startFrame: 0,
-      endFrame: 180, // 3 seconds
+      endFrame: 180,
       draw: (ctx, frame, sceneFrame) => drawScene1(ctx, frame, profile, avatar),
     },
     {
       startFrame: 180,
-      endFrame: 300, // 2 seconds
+      endFrame: 300,
       draw: (ctx, frame, sceneFrame) => drawScene2(ctx, sceneFrame, profile),
     },
     {
       startFrame: 300,
-      endFrame: 540, // 4 seconds
+      endFrame: 540,
       draw: (ctx, frame, sceneFrame) => drawScene3(ctx, sceneFrame, profile, planets, totalBytes, avatar),
     },
   ];
   
-  // Generate frames
   for (let frame = 0; frame < TOTAL_FRAMES; frame++) {
-    // Find active scene
     const scene = scenes.find(s => frame >= s.startFrame && frame < s.endFrame);
     const sceneFrame = frame - (scene?.startFrame || 0);
     
-    // Clear with background
     drawBackground(ctx, frame);
     
-    // Draw active scene
     if (scene) {
       scene.draw(ctx, frame, sceneFrame);
     }
@@ -136,27 +127,23 @@ export async function generateSolarSystemGIF(
   return encoder.out.getData();
 }
 
-// Scene 1: Terminal boot + whoami
 function drawScene1(ctx: CanvasRenderingContext2D, frame: number, profile: Profile, avatar: Image) {
   const termX = 80;
   const termY = 100;
   const termW = 500;
   const termH = 400;
   
-  // Terminal window
   drawTerminalWindow(ctx, termX, termY, termW, termH, frame);
   
-  // Header
   ctx.fillStyle = '#8b949e';
   ctx.font = '12px monospace';
   ctx.fillText('vihan@github ~ %', termX + 20, termY + 50);
   
-  // Typing sequence with realistic timing
   const sequence = [
     { char: 'w', delay: 30 },
     { char: 'h', delay: 35 },
     { char: 'o', delay: 40 },
-    { char: 'a', delay: 45 }, // Typo
+    { char: 'a', delay: 45 },
     { char: 'BACKSPACE', delay: 55, isBackspace: true },
     { char: 'm', delay: 65 },
     { char: 'i', delay: 70 },
@@ -172,7 +159,6 @@ function drawScene1(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
     if (frame < item.delay) return;
     
     if (item.isBackspace) {
-      // Backspace animation
       const progress = (frame - item.delay) / 5;
       if (progress < 1) {
         ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
@@ -182,7 +168,6 @@ function drawScene1(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
       }
     } else if (item.isEnter) {
       if (frame === item.delay) {
-        // Flash effect
         ctx.fillStyle = 'rgba(0, 255, 65, 0.15)';
         ctx.fillRect(termX + 2, cursorY - 20, termW - 4, 30);
       }
@@ -198,13 +183,11 @@ function drawScene1(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
     }
   });
   
-  // Blinking cursor
   if (frame < 95 || (frame > 160 && frame % 30 < 15)) {
     ctx.fillStyle = '#00ff41';
     ctx.fillRect(cursorX, cursorY - 12, 10, 18);
   }
   
-  // Profile picture fades in
   if (frame > 120) {
     const fadeIn = Math.min(1, (frame - 120) / 30);
     ctx.globalAlpha = fadeIn;
@@ -213,7 +196,6 @@ function drawScene1(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
   }
 }
 
-// Scene 2: mylangstats command
 function drawScene2(ctx: CanvasRenderingContext2D, frame: number, profile: Profile) {
   const termX = 80;
   const termY = 100;
@@ -222,17 +204,14 @@ function drawScene2(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
   
   drawTerminalWindow(ctx, termX, termY, termW, termH, 180 + frame);
   
-  // Previous output dimmed
   ctx.fillStyle = 'rgba(139, 148, 158, 0.3)';
   ctx.font = '12px monospace';
   ctx.fillText('vihan@github ~ % whoami', termX + 20, termY + 50);
   ctx.fillText(profile.name || profile.login, termX + 20, termY + 80);
   
-  // New prompt
   ctx.fillStyle = '#8b949e';
   ctx.fillText('vihan@github ~ %', termX + 20, termY + 130);
   
-  // Type mylangstats
   const command = 'mylangstats';
   const typeProgress = Math.min(command.length, Math.max(0, frame - 20));
   const visibleCmd = command.slice(0, typeProgress);
@@ -240,19 +219,16 @@ function drawScene2(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
   ctx.fillStyle = '#00ff41';
   ctx.fillText(visibleCmd, termX + 20 + ctx.measureText('vihan@github ~ % ').width, termY + 130);
   
-  // Cursor
   if (frame % 20 < 10) {
     const cursorPos = termX + 20 + ctx.measureText('vihan@github ~ % ' + visibleCmd).width;
     ctx.fillRect(cursorPos, termY + 118, 10, 16);
   }
   
-  // Execute at frame 80
   if (frame === 80) {
     ctx.fillStyle = 'rgba(0, 255, 65, 0.2)';
     ctx.fillRect(termX + 2, termY + 115, termW - 4, 25);
   }
   
-  // Transition to solar system at end
   if (frame > 100) {
     const fadeOut = Math.max(0, 1 - (frame - 100) / 20);
     ctx.fillStyle = `rgba(13, 17, 23, ${1 - fadeOut})`;
@@ -260,7 +236,6 @@ function drawScene2(ctx: CanvasRenderingContext2D, frame: number, profile: Profi
   }
 }
 
-// Scene 3: Solar system visualization
 function drawScene3(
   ctx: CanvasRenderingContext2D,
   frame: number,
@@ -269,10 +244,8 @@ function drawScene3(
   totalBytes: number,
   avatar: Image
 ) {
-  // Draw orbit rings first (behind planets)
-  drawOrbitRings(ctx, frame);
+  drawElegantOrbits(ctx, 300 + frame);
   
-  // Draw planets with proper z-sorting
   const planetPositions = planets.map((planet, i) => {
     const orbitSpeed = 0.3 + (i * 0.1);
     const currentAngle = planet.angle + (frame * 0.002 * orbitSpeed);
@@ -283,29 +256,24 @@ function drawScene3(
     return { planet, x, y, depth, angle: currentAngle, index: i };
   });
   
-  // Sort by depth for proper layering
   planetPositions.sort((a, b) => a.depth - b.depth);
   
-  // Draw trails first (behind planets)
   planetPositions.forEach(({ planet, angle, index }) => {
     if (frame > index * 10) {
-      drawEnhancedTrail(ctx, planet, angle, frame, index);
+      drawElegantTrail(ctx, planet, angle);
     }
   });
   
-  // Draw planets
   planetPositions.forEach(({ planet, x, y, depth, index }) => {
     if (frame > index * 10) {
       const scale = 0.6 + (depth + 1) * 0.2;
       const alpha = 0.5 + (depth + 1) * 0.25;
-      drawEnhancedPlanet(ctx, planet, x, y, scale, alpha, totalBytes, frame);
+      drawProfessionalPlanet(ctx, planet, x, y, scale, alpha, totalBytes, 300 + frame);
     }
   });
   
-  // Center avatar (sun)
-  drawEnhancedAvatar(ctx, avatar, frame);
+  drawProfessionalSun(ctx, avatar, 300 + frame);
   
-  // Stats panel slides in from right
   if (frame > 60) {
     const slideProgress = Math.min(1, (frame - 60) / 30);
     const panelX = WIDTH - 320 + (1 - easeOutCubic(slideProgress)) * 300;
@@ -313,9 +281,7 @@ function drawScene3(
   }
 }
 
-// Helper functions
 function drawBackground(ctx: CanvasRenderingContext2D, frame: number) {
-  // Deep space gradient
   const gradient = ctx.createRadialGradient(
     CENTER_X, CENTER_Y, 0,
     CENTER_X, CENTER_Y, WIDTH
@@ -326,7 +292,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, frame: number) {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
   
-  // Animated stars
   for (let i = 0; i < 150; i++) {
     const baseX = (i * 137.5) % WIDTH;
     const baseY = (i * 71.3) % HEIGHT;
@@ -343,7 +308,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, frame: number) {
   }
   ctx.globalAlpha = 1;
   
-  // Nebula clouds
   const nebula1 = ctx.createRadialGradient(
     WIDTH * 0.2, HEIGHT * 0.3, 0,
     WIDTH * 0.2, HEIGHT * 0.3, 400
@@ -362,14 +326,12 @@ function drawBackground(ctx: CanvasRenderingContext2D, frame: number) {
   ctx.fillStyle = nebula2;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
   
-  // Scanlines
   ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
   for (let y = 0; y < HEIGHT; y += 2) {
     const offset = Math.sin((y + frame) * 0.01) * 1;
     ctx.fillRect(0, y + offset, WIDTH, 1);
   }
   
-  // Vignette
   const vignette = ctx.createRadialGradient(
     CENTER_X, CENTER_Y, HEIGHT * 0.3,
     CENTER_X, CENTER_Y, HEIGHT * 0.9
@@ -381,7 +343,6 @@ function drawBackground(ctx: CanvasRenderingContext2D, frame: number) {
 }
 
 function drawTerminalWindow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, frame: number) {
-  // Glassmorphism background
   ctx.fillStyle = 'rgba(22, 27, 34, 0.9)';
   ctx.strokeStyle = 'rgba(0, 255, 65, 0.2)';
   ctx.lineWidth = 1;
@@ -390,7 +351,6 @@ function drawTerminalWindow(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.fill();
   ctx.stroke();
   
-  // Top highlight
   const highlight = ctx.createLinearGradient(x, y, x, y + 40);
   highlight.addColorStop(0, 'rgba(255,255,255,0.05)');
   highlight.addColorStop(1, 'transparent');
@@ -399,7 +359,6 @@ function drawTerminalWindow(ctx: CanvasRenderingContext2D, x: number, y: number,
   ctx.roundRect(x, y, w, 40, [16, 16, 0, 0]);
   ctx.fill();
   
-  // Window controls with glow
   const controls = [
     { x: x + 20, color: '#ff5f56', glow: 'rgba(255, 95, 86, 0.6)' },
     { x: x + 40, color: '#ffbd2e', glow: 'rgba(255, 189, 46, 0.6)' },
@@ -417,54 +376,47 @@ function drawTerminalWindow(ctx: CanvasRenderingContext2D, x: number, y: number,
   });
 }
 
-function drawEnhancedAvatar(ctx: CanvasRenderingContext2D, avatar: Image, frame: number) {
-  const size = 90;
-  const pulse = Math.sin(frame * 0.05) * 0.08 + 1;
+function drawProfessionalSun(ctx: CanvasRenderingContext2D, avatar: Image, frame: number) {
+  const size = 85;
+  const breathe = Math.sin(frame * 0.03) * 0.05 + 1;
   
-  // Sun rays rotating
   ctx.save();
   ctx.translate(CENTER_X, CENTER_Y);
-  ctx.rotate(frame * 0.008);
+  ctx.rotate(frame * 0.005);
   
-  for (let i = 0; i < 16; i++) {
-    const angle = (i / 16) * Math.PI * 2;
-    const rayLength = 140 * pulse;
-    const rayWidth = 4;
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2;
+    const rayLength = 160 * breathe;
     
     ctx.rotate(angle);
-    const gradient = ctx.createLinearGradient(0, size * 0.8, 0, rayLength);
-    gradient.addColorStop(0, 'rgba(255, 200, 50, 0.6)');
-    gradient.addColorStop(0.5, 'rgba(255, 150, 0, 0.3)');
+    const gradient = ctx.createLinearGradient(0, size, 0, rayLength);
+    gradient.addColorStop(0, 'rgba(255, 200, 50, 0.4)');
+    gradient.addColorStop(0.5, 'rgba(255, 150, 0, 0.15)');
     gradient.addColorStop(1, 'transparent');
     
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.moveTo(-rayWidth/2, size * 0.8);
-    ctx.lineTo(rayWidth/2, size * 0.8);
+    ctx.moveTo(-3, size);
+    ctx.lineTo(3, size);
     ctx.lineTo(0, rayLength);
     ctx.fill();
   }
   ctx.restore();
   
-  // Multiple glow rings
   for (let i = 4; i > 0; i--) {
-    const ringSize = size * (1 + i * 0.25) * pulse;
-    const alpha = 0.15 / i;
+    const glowSize = size * (1.3 + i * 0.3) * breathe;
+    const alpha = 0.12 / i;
     
-    const gradient = ctx.createRadialGradient(
-      CENTER_X, CENTER_Y, size * 0.9,
-      CENTER_X, CENTER_Y, ringSize
-    );
+    const gradient = ctx.createRadialGradient(CENTER_X, CENTER_Y, size, CENTER_X, CENTER_Y, glowSize);
     gradient.addColorStop(0, `rgba(255, 165, 0, ${alpha})`);
     gradient.addColorStop(1, 'transparent');
     
     ctx.fillStyle = gradient;
     ctx.beginPath();
-    ctx.arc(CENTER_X, CENTER_Y, ringSize, 0, Math.PI * 2);
+    ctx.arc(CENTER_X, CENTER_Y, glowSize, 0, Math.PI * 2);
     ctx.fill();
   }
   
-  // Avatar clip
   ctx.save();
   ctx.beginPath();
   ctx.arc(CENTER_X, CENTER_Y, size, 0, Math.PI * 2);
@@ -472,32 +424,81 @@ function drawEnhancedAvatar(ctx: CanvasRenderingContext2D, avatar: Image, frame:
   
   ctx.drawImage(avatar, CENTER_X - size, CENTER_Y - size, size * 2, size * 2);
   
-  // Sun overlay
-  const sunOverlay = ctx.createRadialGradient(
-    CENTER_X, CENTER_Y, 0,
-    CENTER_X, CENTER_Y, size
-  );
-  sunOverlay.addColorStop(0, 'rgba(255, 220, 100, 0.3)');
-  sunOverlay.addColorStop(0.7, 'rgba(255, 150, 50, 0.1)');
-  sunOverlay.addColorStop(1, 'rgba(255, 100, 0, 0.2)');
-  ctx.fillStyle = sunOverlay;
+  const tint = ctx.createRadialGradient(CENTER_X, CENTER_Y, 0, CENTER_X, CENTER_Y, size);
+  tint.addColorStop(0, 'rgba(255, 220, 100, 0.2)');
+  tint.addColorStop(0.7, 'rgba(255, 150, 50, 0.1)');
+  tint.addColorStop(1, 'rgba(255, 100, 0, 0.3)');
+  ctx.fillStyle = tint;
   ctx.fill();
   
   ctx.restore();
   
-  // Animated border
-  const borderPulse = Math.sin(frame * 0.1) * 0.5 + 0.5;
+  const pulse = Math.sin(frame * 0.08) * 0.5 + 0.5;
   ctx.strokeStyle = '#ffa500';
   ctx.lineWidth = 3;
   ctx.shadowColor = '#ffa500';
-  ctx.shadowBlur = 15 + borderPulse * 10;
+  ctx.shadowBlur = 20 + pulse * 15;
   ctx.beginPath();
   ctx.arc(CENTER_X, CENTER_Y, size, 0, Math.PI * 2);
   ctx.stroke();
   ctx.shadowBlur = 0;
 }
 
-function drawEnhancedPlanet(
+function drawElegantOrbits(ctx: CanvasRenderingContext2D, frame: number) {
+  const rings = [
+    { rx: ORBIT_RADIUS_X, ry: ORBIT_RADIUS_Y, alpha: 0.1, width: 1 },
+    { rx: ORBIT_RADIUS_X * 0.98, ry: ORBIT_RADIUS_Y * 0.98, alpha: 0.05, width: 3 },
+  ];
+  
+  rings.forEach((ring, i) => {
+    ctx.strokeStyle = `rgba(0, 255, 65, ${ring.alpha})`;
+    ctx.lineWidth = ring.width;
+    
+    ctx.setLineDash([50, 100]);
+    ctx.lineDashOffset = -frame * (0.5 + i * 0.2);
+    
+    ctx.beginPath();
+    ctx.ellipse(CENTER_X, CENTER_Y, ring.rx, ring.ry, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  });
+  
+  ctx.setLineDash([]);
+  
+  ctx.strokeStyle = 'rgba(88, 166, 255, 0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.ellipse(CENTER_X, CENTER_Y, ORBIT_RADIUS_X * 0.6, ORBIT_RADIUS_Y * 0.6, 0, 0, Math.PI * 2);
+  ctx.stroke();
+}
+
+function drawElegantTrail(
+  ctx: CanvasRenderingContext2D,
+  planet: Planet,
+  currentAngle: number
+) {
+  const trailLength = 15;
+  
+  for (let t = 0; t < trailLength; t++) {
+    const trailAngle = currentAngle - (t * 0.03);
+    const trailX = CENTER_X + Math.cos(trailAngle) * ORBIT_RADIUS_X;
+    const trailY = CENTER_Y + Math.sin(trailAngle) * ORBIT_RADIUS_Y;
+    
+    const progress = t / trailLength;
+    const alpha = (1 - progress) * 0.4 * Math.sin(progress * Math.PI);
+    const size = 35 * (1 - progress) * 0.8;
+    
+    const gradient = ctx.createRadialGradient(trailX, trailY, 0, trailX, trailY, size);
+    gradient.addColorStop(0, hexToRgba(planet.color, alpha));
+    gradient.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(trailX, trailY, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawProfessionalPlanet(
   ctx: CanvasRenderingContext2D,
   planet: Planet,
   x: number,
@@ -507,125 +508,98 @@ function drawEnhancedPlanet(
   totalBytes: number,
   frame: number
 ) {
-  const size = 35 * scale;
+  const size = 40 * scale;
   const percent = ((planet.language.size / totalBytes) * 100).toFixed(1);
   
   ctx.save();
   ctx.globalAlpha = alpha;
   
-  // Planet glow
-  const glow = ctx.createRadialGradient(x, y, 0, x, y, size * 2.5);
-  glow.addColorStop(0, hexToRgba(planet.color, 0.5));
-  glow.addColorStop(0.5, hexToRgba(planet.color, 0.2));
-  glow.addColorStop(1, 'transparent');
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(x, y, size * 2.5, 0, Math.PI * 2);
-  ctx.fill();
+  for (let i = 3; i > 0; i--) {
+    const glowSize = size * (1.5 + i * 0.4);
+    const glowAlpha = 0.15 / i;
+    
+    const gradient = ctx.createRadialGradient(x, y, size, x, y, glowSize);
+    gradient.addColorStop(0, hexToRgba(planet.color, glowAlpha));
+    gradient.addColorStop(1, 'transparent');
+    
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(x, y, glowSize, 0, Math.PI * 2);
+    ctx.fill();
+  }
   
-  // Orbit ring segment near planet
-  ctx.strokeStyle = hexToRgba(planet.color, 0.3);
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(CENTER_X, CENTER_Y, Math.sqrt((x - CENTER_X) ** 2 + (y - CENTER_Y) ** 2), 0, Math.PI * 2);
-  ctx.stroke();
-  
-  // Planet body with 3D effect
-  const bodyGradient = ctx.createRadialGradient(
+  const bodyGrad = ctx.createRadialGradient(
     x - size * 0.3, y - size * 0.3, 0,
     x, y, size
   );
-  bodyGradient.addColorStop(0, lightenColor(planet.color, 30));
-  bodyGradient.addColorStop(0.5, planet.color);
-  bodyGradient.addColorStop(1, darkenColor(planet.color, 30));
+  bodyGrad.addColorStop(0, lightenColor(planet.color, 40));
+  bodyGrad.addColorStop(0.4, planet.color);
+  bodyGrad.addColorStop(0.9, darkenColor(planet.color, 30));
+  bodyGrad.addColorStop(1, darkenColor(planet.color, 50));
   
   ctx.beginPath();
   ctx.arc(x, y, size, 0, Math.PI * 2);
-  ctx.fillStyle = bodyGradient;
+  ctx.fillStyle = bodyGrad;
   ctx.fill();
   
-  // Logo or icon
+  ctx.beginPath();
+  ctx.ellipse(x - size * 0.3, y - size * 0.3, size * 0.25, size * 0.15, -Math.PI/4, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.fill();
+  
+  ctx.strokeStyle = lightenColor(planet.color, 20);
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(x, y, size * 0.85, 0, Math.PI * 2);
+  ctx.stroke();
+  
   if (planet.loadedLogo) {
-    const logoSize = size * 1.2;
+    const logoSize = size * 1.4;
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 10;
     ctx.drawImage(planet.loadedLogo, x - logoSize/2, y - logoSize/2, logoSize, logoSize);
+    ctx.shadowBlur = 0;
   } else {
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${14 * scale}px monospace`;
+    ctx.font = `bold ${16 * scale}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+    ctx.shadowBlur = 4;
     ctx.fillText(planet.icon, x, y);
+    ctx.shadowBlur = 0;
   }
   
-  // Label with background
   if (alpha > 0.7) {
-    const label = `${planet.language.name} ${percent}%`;
-    ctx.font = `bold ${12 * scale}px monospace`;
-    const textWidth = ctx.measureText(label).width;
+    const label = `${planet.language.name}`;
+    const subLabel = `${percent}%`;
     
-    // Label background
+    ctx.font = `bold ${13 * scale}px "JetBrains Mono", monospace`;
+    const textWidth = Math.max(
+      ctx.measureText(label).width,
+      ctx.measureText(subLabel).width
+    );
+    
+    const labelY = y + size + 25;
     ctx.fillStyle = 'rgba(13, 17, 23, 0.8)';
-    ctx.beginPath();
-    ctx.roundRect(x - textWidth/2 - 6, y + size + 8, textWidth + 12, 20, 4);
-    ctx.fill();
+    ctx.strokeStyle = hexToRgba(planet.color, 0.5);
+    ctx.lineWidth = 1;
     
-    // Label text
+    roundRect(ctx, x - textWidth/2 - 8, labelY - 15, textWidth + 16, 40, 6);
+    ctx.fill();
+    ctx.stroke();
+    
+    ctx.shadowColor = planet.color;
+    ctx.shadowBlur = 10;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(label, x, labelY);
+    
+    ctx.shadowBlur = 0;
     ctx.fillStyle = planet.color;
-    ctx.fillText(label, x, y + size + 20);
+    ctx.fillText(subLabel, x, labelY + 18);
   }
   
   ctx.restore();
-}
-
-function drawEnhancedTrail(
-  ctx: CanvasRenderingContext2D,
-  planet: Planet,
-  currentAngle: number,
-  frame: number,
-  index: number
-) {
-  const trailLength = 12;
-  
-  for (let t = 0; t < trailLength; t++) {
-    const trailAngle = currentAngle - (t * 0.04);
-    const trailX = CENTER_X + Math.cos(trailAngle) * ORBIT_RADIUS_X;
-    const trailY = CENTER_Y + Math.sin(trailAngle) * ORBIT_RADIUS_Y;
-    const trailDepth = Math.sin(trailAngle);
-    const trailScale = 0.6 + (trailDepth + 1) * 0.2;
-    
-    const alpha = (1 - t / trailLength) * 0.4 * (0.5 + (trailDepth + 1) * 0.25);
-    const size = (30 * trailScale) * (1 - t / trailLength);
-    
-    ctx.beginPath();
-    ctx.arc(trailX, trailY, size, 0, Math.PI * 2);
-    ctx.fillStyle = hexToRgba(planet.color, alpha);
-    ctx.fill();
-  }
-}
-
-function drawOrbitRings(ctx: CanvasRenderingContext2D, frame: number) {
-  // Main orbit paths
-  ctx.strokeStyle = 'rgba(0, 255, 65, 0.08)';
-  ctx.lineWidth = 1;
-  
-  // Outer ring
-  ctx.beginPath();
-  ctx.ellipse(CENTER_X, CENTER_Y, ORBIT_RADIUS_X, ORBIT_RADIUS_Y, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  
-  // Inner ring
-  ctx.beginPath();
-  ctx.ellipse(CENTER_X, CENTER_Y, ORBIT_RADIUS_X * 0.65, ORBIT_RADIUS_Y * 0.65, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  
-  // Animated ring segments
-  const dashOffset = (frame * 0.5) % 100;
-  ctx.setLineDash([20, 80]);
-  ctx.lineDashOffset = -dashOffset;
-  ctx.strokeStyle = 'rgba(0, 255, 65, 0.15)';
-  ctx.beginPath();
-  ctx.ellipse(CENTER_X, CENTER_Y, ORBIT_RADIUS_X, ORBIT_RADIUS_Y, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
 }
 
 function drawStatsPanel(
@@ -639,7 +613,6 @@ function drawStatsPanel(
   const w = 280;
   const h = 350;
   
-  // Panel background
   ctx.fillStyle = 'rgba(22, 27, 34, 0.95)';
   ctx.strokeStyle = 'rgba(0, 255, 65, 0.3)';
   ctx.lineWidth = 1;
@@ -647,12 +620,10 @@ function drawStatsPanel(
   ctx.fill();
   ctx.stroke();
   
-  // Header
   ctx.fillStyle = '#00ff41';
   ctx.font = 'bold 16px monospace';
   ctx.fillText('> Language Stats', x + 20, y + 40);
   
-  // Stats bars
   const sortedPlanets = [...planets].sort((a, b) => b.language.size - a.language.size);
   
   sortedPlanets.forEach((planet, i) => {
@@ -661,27 +632,22 @@ function drawStatsPanel(
     const barWidth = 200;
     const fillWidth = (percent / 100) * barWidth;
     
-    // Animate bar fill
     const animDelay = i * 10;
     const animProgress = Math.max(0, Math.min(1, (frame - 90 - animDelay) / 20));
     const currentWidth = fillWidth * easeOutCubic(animProgress);
     
-    // Label
     ctx.fillStyle = '#c9d1d9';
     ctx.font = '12px monospace';
     ctx.fillText(planet.language.name, x + 20, barY);
     
-    // Percentage
     ctx.fillStyle = planet.color;
     ctx.fillText(`${percent.toFixed(1)}%`, x + 240, barY);
     
-    // Bar background
     ctx.fillStyle = 'rgba(48, 54, 61, 0.8)';
-  ctx.beginPath();
+    ctx.beginPath();
     ctx.roundRect(x + 20, barY + 8, barWidth, 8, 4);
     ctx.fill();
     
-    // Bar fill with glow
     if (currentWidth > 0) {
       ctx.fillStyle = planet.color;
       ctx.shadowColor = planet.color;
@@ -701,7 +667,6 @@ function drawAvatarSmall(ctx: CanvasRenderingContext2D, avatar: Image, x: number
   ctx.clip();
   ctx.drawImage(avatar, x - size, y - size, size * 2, size * 2);
   
-  // Green glow border
   ctx.strokeStyle = '#00ff41';
   ctx.lineWidth = 3;
   ctx.shadowColor = '#00ff41';
@@ -710,7 +675,6 @@ function drawAvatarSmall(ctx: CanvasRenderingContext2D, avatar: Image, x: number
   ctx.restore();
 }
 
-// Utility functions
 function roundRect(ctx: any, x: number, y: number, w: number, h: number, r: number) {
   ctx.beginPath();
   ctx.moveTo(x + r, y);
@@ -737,17 +701,21 @@ function hexToRgba(hex: string, alpha: number): string {
 }
 
 function lightenColor(hex: string, percent: number): string {
-  const r = Math.min(255, parseInt(hex.slice(1, 3), 16) + percent);
-  const g = Math.min(255, parseInt(hex.slice(3, 5), 16) + percent);
-  const b = Math.min(255, parseInt(hex.slice(5, 7), 16) + percent);
-  return `rgb(${r}, ${g}, ${b})`;
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.min(255, (num >> 16) + amt);
+  const G = Math.min(255, ((num >> 8) & 0x00FF) + amt);
+  const B = Math.min(255, (num & 0x0000FF) + amt);
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
 }
 
 function darkenColor(hex: string, percent: number): string {
-  const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - percent);
-  const g = Math.max(0, parseInt(hex.slice(3, 5), 16) - percent);
-  const b = Math.max(0, parseInt(hex.slice(5, 7), 16) - percent);
-  return `rgb(${r}, ${g}, ${b})`;
+  const num = parseInt(hex.replace('#', ''), 16);
+  const amt = Math.round(2.55 * percent);
+  const R = Math.max(0, (num >> 16) - amt);
+  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt);
+  const B = Math.max(0, (num & 0x0000FF) - amt);
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`;
 }
 
 function getLanguageIcon(name: string): { icon: string; color: string; logo: string } {
