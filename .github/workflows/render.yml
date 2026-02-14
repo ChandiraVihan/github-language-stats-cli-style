@@ -1,0 +1,73 @@
+# .github/workflows/render.yml
+name: Render Stats
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        required: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Fetch GitHub data
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          USERNAME: ${{ github.event.inputs.username }}
+        run: |
+          curl -s -H "Authorization: bearer $GH_TOKEN" \
+               -X POST \
+               -d "{\"query\":\"query(\$u:String!){user(login:\$u){name bio repositories(first:100,ownerAffiliations:OWNER,isFork:false){nodes{languages(first:10,orderBy:{field:SIZE,direction:DESC}){edges{size node{name color}}}}}}}\",\"variables\":{\"u\":\"$USERNAME\"}}" \
+               https://api.github.com/graphql > /tmp/data.json
+          
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('/tmp/data.json'));
+            const repos = data.data.user.repositories.nodes;
+            const langs = {};
+            repos.forEach(r => {
+              r.languages?.edges?.forEach(e => {
+                const n = e.node.name;
+                if (!langs[n]) langs[n] = {name:n, color:e.node.color||'#8b949e', size:0};
+                langs[n].size += e.size;
+              });
+            });
+            const total = Object.values(langs).reduce((a,b) => a+b.size, 0);
+            const top = Object.values(langs)
+              .sort((a,b) => b.size - a.size)
+              .slice(0,6)
+              .map(l => ({...l, percent: Math.round(l.size/total*100*10)/10}));
+            fs.writeFileSync('manim/stats_data.json', JSON.stringify({
+              username: process.env.USERNAME,
+              name: data.data.user.name || process.env.USERNAME,
+              bio: data.data.user.bio || 'Developer',
+              languages: top
+            }));
+          "
+      
+      - name: Setup Manim
+        uses: docker://manimcommunity/manim:v0.18.0
+      
+      - name: Render MP4
+        run: |
+          cd manim
+          manim -qh solar_system.py GitHubSolarSystem -o stats.mp4
+      
+      - name: Convert to GIF
+        run: |
+          sudo apt-get update && sudo apt-get install -y ffmpeg
+          ffmpeg -i manim/media/videos/solar_system/1080p60/stats.mp4 \
+                 -vf "fps=30,scale=1200:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer" \
+                 -loop 0 \
+                 manim/media/videos/solar_system/1080p60/stats.gif
+      
+      - name: Deploy to Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./manim/media/videos/solar_system/1080p60
+          destination_dir: renders/${{ github.event.inputs.username }}
