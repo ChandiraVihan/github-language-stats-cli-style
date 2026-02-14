@@ -58,18 +58,22 @@ jobs:
             }));
           "
       
-      - name: Build and Render with Docker
+      # SINGLE STEP: All manim commands inside Docker
+      - name: Render with Manim
         run: |
           docker run --rm \
             -v "$PWD/manim:/manim" \
             -w /manim \
             manimcommunity/manim:v0.18.0 \
-            manim -qh solar_system.py GitHubSolarSystem
+            bash -c "
+              manim -qh solar_system.py GitHubSolarSystem &&
+              mv media/videos/solar_system/1080p60/GitHubSolarSystem.mp4 /manim/stats.mp4
+            "
       
       - name: Convert to GIF
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
-          ffmpeg -i manim/media/videos/solar_system/1080p60/GitHubSolarSystem.mp4 \
+          ffmpeg -i manim/stats.mp4 \
                  -vf "fps=30,scale=1200:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer" \
                  -loop 0 \
                  manim/stats.gif
@@ -120,4 +124,3 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
