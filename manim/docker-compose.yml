@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  manim:
+    build: .
+    volumes:
+      - ./:/manim
+      - ./output:/manim/media/videos/solar_system/1080p60
+    environment:
+      - GH_TOKEN=${GH_TOKEN}
+    command: >
+      sh -c "node fetch-data.js &&
+             manim -qh solar_system.py GitHubSolarSystem -o stats.gif"

@@ -1,37 +1,52 @@
 // src/app/api/stats/[username]/route.ts
-import { fetchUserLanguages, fetchGitHubProfile } from '@/lib/github';
-import { generateSolarSystemGIF } from '@/lib/gif-generator';
 
-export const runtime = 'nodejs';
-export const maxDuration = 30; // Allow 30 seconds for generation
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 export async function GET(
   request: Request,
-  context: { params: Promise<{ username: string }> }
+  { params }: { params: Promise<{ username: string }> }
 ) {
+  const { username } = await params;
+  
+  // Check if render exists
+  const gifUrl = `https://yourname.github.io/github-solar-stats/renders/${username}/stats.gif`;
+  
   try {
-    const params = await context.params;
-    const username = params.username;
-
-    const [profile, languages] = await Promise.all([
-      fetchGitHubProfile(username),
-      fetchUserLanguages(username),
-    ]);
-
-    if (languages.length === 0) {
-      return new Response('No languages found', { status: 404 });
+    const check = await fetch(gifUrl, { method: 'HEAD' });
+    
+    if (check.ok) {
+      // Return existing GIF
+      return Response.redirect(gifUrl, 302);
     }
-
-    const gifBuffer = await generateSolarSystemGIF(profile, languages);
-
-    return new Response(gifBuffer, {
-      headers: {
-        'Content-Type': 'image/gif',
-        'Cache-Control': 's-maxage=3600, stale-while-revalidate=86400',
-      },
-    });
-  } catch (error) {
-    console.error('Error:', error);
-    return new Response('Failed to generate GIF', { status: 500 });
+  } catch {
+    // Not found, trigger render
   }
+  
+  // Trigger GitHub Action to render
+  await fetch(
+    `https://api.github.com/repos/yourname/github-solar-stats/actions/workflows/render.yml/dispatches`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${GITHUB_TOKEN}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+      body: JSON.stringify({
+        ref: 'main',
+        inputs: { username }
+      })
+    }
+  );
+  
+  return new Response(
+    JSON.stringify({ 
+      status: 'rendering',
+      message: 'Check back in 2 minutes',
+      url: gifUrl 
+    }),
+    { 
+      status: 202,
+      headers: { 'Content-Type': 'application/json' }
+    }
+  );
 }

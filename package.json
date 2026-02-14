@@ -5,7 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "manim:build": "docker-compose -f manim/docker-compose.yml build",
+    "manim:render": "docker-compose -f manim/docker-compose.yml up",
+    "manim:test": "USERNAME=testuser GH_TOKEN=ghp_xxx npm run manim:render"
   },
   "dependencies": {
     "@octokit/graphql": "^9.0.3",
