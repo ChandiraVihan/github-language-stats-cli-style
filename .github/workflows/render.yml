@@ -1,4 +1,3 @@
-# .github/workflows/render.yml
 name: Render Stats
 
 on:
@@ -6,6 +5,15 @@ on:
     inputs:
       username:
         required: true
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
 
 jobs:
   render:
@@ -19,6 +27,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
           USERNAME: ${{ github.event.inputs.username }}
         run: |
+          mkdir -p manim
           curl -s -H "Authorization: bearer $GH_TOKEN" \
                -X POST \
                -d "{\"query\":\"query(\$u:String!){user(login:\$u){name bio repositories(first:100,ownerAffiliations:OWNER,isFork:false){nodes{languages(first:10,orderBy:{field:SIZE,direction:DESC}){edges{size node{name color}}}}}}}\",\"variables\":{\"u\":\"$USERNAME\"}}" \
@@ -49,25 +58,69 @@ jobs:
             }));
           "
       
-      - name: Setup Manim
-        uses: docker://manimcommunity/manim:v0.18.0
-      
-      - name: Render MP4
+      # SINGLE STEP: All manim commands inside Docker
+      - name: Render with Manim
         run: |
-          cd manim
-          manim -qh solar_system.py GitHubSolarSystem -o stats.mp4
+          docker run --rm \
+            -v "$PWD/manim:/manim" \
+            -w /manim \
+            manimcommunity/manim:v0.18.0 \
+            bash -c "
+              manim -qh solar_system.py GitHubSolarSystem &&
+              mv media/videos/solar_system/1080p60/GitHubSolarSystem.mp4 /manim/stats.mp4
+            "
       
       - name: Convert to GIF
         run: |
           sudo apt-get update && sudo apt-get install -y ffmpeg
-          ffmpeg -i manim/media/videos/solar_system/1080p60/stats.mp4 \
+          ffmpeg -i manim/stats.mp4 \
                  -vf "fps=30,scale=1200:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=128[p];[s1][p]paletteuse=dither=bayer" \
                  -loop 0 \
-                 manim/media/videos/solar_system/1080p60/stats.gif
+                 manim/stats.gif
       
-      - name: Deploy to Pages
-        uses: peaceiris/actions-gh-pages@v4
+      - name: Prepare Pages output
+        run: |
+          mkdir -p _site
+          cp manim/stats.gif _site/
+          cat > _site/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>GitHub Stats - ${{ github.event.inputs.username }}</title>
+            <style>
+              body { 
+                background: #0d1117; 
+                color: #c9d1d9;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+                display: flex; 
+                flex-direction: column;
+                justify-content: center; 
+                align-items: center; 
+                min-height: 100vh; 
+                margin: 0; 
+                padding: 20px;
+              }
+              h1 { margin-bottom: 20px; }
+              img { max-width: 100%; height: auto; border-radius: 8px; }
+              .container { text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>@${{ github.event.inputs.username }}</h1>
+              <img src="stats.gif" alt="GitHub Language Stats Animation">
+            </div>
+          </body>
+          </html>
+          EOF
+      
+      - name: Upload to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./manim/media/videos/solar_system/1080p60
-          destination_dir: renders/${{ github.event.inputs.username }}
+          path: ./_site
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

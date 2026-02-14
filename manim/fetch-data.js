@@ -49,6 +49,8 @@ async function fetchData() {
     .sort((a, b) => b.size - a.size)
     .slice(0, 6)
     .map(l => ({ ...l, percent: Math.round(l.size/total*100*10)/10 }));
+
+  const OUTPUT_PATH = './stats_data.json';
   
   fs.writeFileSync('/manim/stats_data.json', JSON.stringify({
     username,
